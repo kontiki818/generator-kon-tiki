@@ -1,9 +1,7 @@
 # GITHUB_TOKEN is used for git clone https and github_actions_secret authentication
-
-ifndef KONTIKI818_GITHUB_TOKEN
+ifndef GITHUB_TOKEN
     $(error Please specify GITHUB_TOKEN)
 endif
-GITHUB_TOKEN=${KONTIKI818_GITHUB_TOKEN}
 # GH_TOKEN is used for gh within GitHub Actions https://cli.github.com/manual/gh_auth_login
 GH_TOKEN=${GITHUB_TOKEN}
 
