@@ -13,6 +13,8 @@ GH_TOKEN=${GITHUB_TOKEN}
 # KnutHaugland's version number
 KNUT_HAUGLAND_VERSION = 1.2.0
 
+UPDATE_MAKEFILE = knut-haugland
+
 ################################################################
 # User configuration variables
 # These variables should be stored in knut-haugland.yml config file,
@@ -61,6 +63,10 @@ clean:
 deps: stage
 	cd stage && rm -rf terraform-studio-kon-tiki && gh repo clone kontiki818/terraform-studio-kon-tiki
 	bob dep
+	$(call deps_extra)
+
+deps-extra-apt:
+	apt-get install -y markdownlint
 
 lint:
 	find data/ -type f -name "*.json" | while IFS= read -r file; do echo "> $$file"; python3 -m json.tool "$$file"; done
@@ -68,18 +74,6 @@ lint:
 # Placeholder for now - needed by checkmake
 test:
 	echo "PLACEHOLDER test target"
-
-# Update Makefile to the latest version tag
-update-to-latest: TARGET_KNUT_HAUGLAND_VERSION = $(shell curl -s https://api.github.com/repos/cliffano/knut-haugland/tags | jq -r '.[0].name')
-update-to-latest: update-to-version
-
-# Update Makefile to the main branch
-update-to-main:
-	curl https://raw.githubusercontent.com/cliffano/knut-haugland/main/src/Makefile-knut-haugland -o Makefile
-
-# Update Makefile to the version defined in TARGET_KNUT_HAUGLAND_VERSION parameter
-update-to-version:
-	curl https://raw.githubusercontent.com/cliffano/knut-haugland/$(TARGET_KNUT_HAUGLAND_VERSION)/src/Makefile-knut-haugland -o Makefile
 
 ################################################################
 # Build and deploy targets
@@ -124,5 +118,59 @@ infra-import:
 	terraform import -var-file $(TF_VARS) $(IMPORT_ARGS)
 
 ################################################################
+# MAKE IT SO - Utility Makefile functions and targets
+################################################################
 
-.PHONY: ci all stage clean deps lint test update-to-latest update-to-main update-to-version build deploy x-build x-deploy publish infra-init infra-destroy infra-refresh infra-plan infra-apply infra-import
+define run_hook
+	@if [ -f Makefile-extras ] && grep -q "^$(1):" Makefile-extras; then \
+		$(MAKE) -f Makefile-extras $(1); \
+	fi
+endef
+
+define deps_extra
+	@if command -v apt-get > /dev/null 2>&1; then \
+		if [ "$$(id -u)" = "0" ]; then \
+			$(MAKE) deps-extra-apt; \
+		else \
+			sudo $(MAKE) deps-extra-apt; \
+		fi; \
+	fi
+endef
+
+define set_generator_vars
+$(1): UPDATE_GENERATOR_COMPONENT = $$(shell yq .generator.component $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_PROJECT_ID = $$(shell yq .generator.inputs.project_id $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_PROJECT_NAME = $$(shell yq .generator.inputs.project_name $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_PROJECT_DESC = $$(shell yq .generator.inputs.project_desc $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_AUTHOR_NAME = $$(shell yq .generator.inputs.author_name $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_AUTHOR_EMAIL = $$(shell yq .generator.inputs.author_email $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_AUTHOR_URL = $$(shell yq .generator.inputs.author_url $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_GITHUB_ID = $$(shell yq .generator.inputs.github_id $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_GITHUB_REPO = $$(shell yq .generator.inputs.github_repo $(2).yml)
+$(1): UPDATE_GENERATOR_INPUTS_GITHUB_TOKEN_PREFIX = $$(shell yq .generator.inputs.github_token_prefix $(2).yml)
+endef
+
+# Update Makefile to the latest version tag
+update-to-latest: UPDATE_TARGET_VERSION = $(shell curl -s https://api.github.com/repos/cliffano/$(UPDATE_MAKEFILE)/tags | jq -r '.[0].name')
+update-to-latest: update-to-version
+
+# Update Makefile to the main branch
+update-to-main:
+	curl https://raw.githubusercontent.com/cliffano/$(UPDATE_MAKEFILE)/main/src/Makefile-$(UPDATE_MAKEFILE) -o Makefile
+
+# Update Makefile to the version defined in UPDATE_TARGET_VERSION parameter
+update-to-version:
+	curl https://raw.githubusercontent.com/cliffano/$(UPDATE_MAKEFILE)/$(UPDATE_TARGET_VERSION)/src/Makefile-$(UPDATE_MAKEFILE) -o Makefile
+
+release-major:
+	rtk release --release-increment-type major
+
+release-minor:
+	rtk release --release-increment-type minor
+
+release-patch:
+	rtk release --release-increment-type patch
+
+################################################################
+
+.PHONY: ci all stage clean deps deps-extra-apt lint test build deploy x-build x-deploy publish infra-init infra-destroy infra-refresh infra-plan infra-apply infra-import update-to-latest update-to-main update-to-version release-major release-minor release-patch
