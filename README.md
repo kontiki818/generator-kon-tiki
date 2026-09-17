@@ -9,7 +9,7 @@
 
 # Generator-Kon-Tiki
 
-Generator-Kon-Tiki is a Kon-Tiki static web site projects generator using [Plop](https://plopjs.com/).
+Generator-Kon-Tiki is a code generator for Kon-Tiki static web sites.
 
 It provides the following components:
 
