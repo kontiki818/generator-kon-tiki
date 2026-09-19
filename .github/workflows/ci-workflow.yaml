@@ -13,7 +13,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.KONTIKI818_GITHUB_TOKEN }}
       - uses: cliffano/command-docker-action@v2.0.0
         with:
-          command: 'make ci'
+          command: 'apt-get update && make deps ci'
           image: cliffano/kon-tiki
           shell: bash
           env_file: '/tmp/.env'
